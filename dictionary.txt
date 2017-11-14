@@ -1,0 +1,11 @@
+4 10
+jazz
+buzz
+hajj
+fizz
+jinx
+huff
+buff
+jiff
+junk
+quiz
