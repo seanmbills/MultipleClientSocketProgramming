@@ -22,35 +22,50 @@
 #define SNDBUFSIZE 64      /* The send buffer size */
 #define BUFSIZE 40      /* Your name can be as many as 40 chars*/
 
-
+int numConnections;
 
 void lookupDictionary(char* dictionaryName) {
     FILE *fp;
     char *filename = dictionaryName;
+    // puts(filename);
     fp = fopen(filename, "r");
 
     if (fp == NULL){
         printf("Could not open file %s",filename);
         strcpy(dictionaryName, "Does not exist.");
     } else {
-        char line[32];
-        int numLetters = 0;
-        int numLines = 0;
-        //fgets(line, 32, fp);
-        fscanf(fp, "%d %d", &numLetters, &numLines);
-        // printf("Num Letters: %d\n", numLetters);
-        // printf("Num Lines: %d", numLines);
-        fgets(line, 32, fp);
-        int r = rand() % numLines;
+        if (strcmp(filename, "default.txt") == 0) {
+            
+            char buff[512];
+            int numLines = 15;
+            int r = rand() % 15;
+            for (int i = 0; i < r; i++) {
+                fgets(buff, sizeof(buff), fp);
+            }
+            fgets(buff, sizeof(buff), fp);
+            strtok(buff, "\n");
+            strcpy(dictionaryName, buff);
 
-        // printf("Random: %d\n", r);
-        for (int i = 0; i < r; i++) {
+        } else {
+            char line[32];
+            int numLetters = 0;
+            int numLines = 0;
+            //fgets(line, 32, fp);
+            fscanf(fp, "%d %d", &numLetters, &numLines);
+            // printf("Num Letters: %d\n", numLetters);
+            // printf("Num Lines: %d", numLines);
             fgets(line, 32, fp);
+            int r = rand() % numLines;
+
+            // printf("Random: %d\n", r);
+            for (int i = 0; i < r; i++) {
+                fgets(line, 32, fp);
+            }
+            fgets(line, 32, fp);
+            // printf("%s", line);
+            strtok(line, "\n");
+            strcpy(dictionaryName, line);
         }
-        fgets(line, 32, fp);
-        // printf("%s", line);
-        strtok(line, "\n");
-        strcpy(dictionaryName, line);
     }
 }
 
@@ -72,7 +87,7 @@ int main(int argc, char *argv[])
     ssize_t numBytes;   /* variable to hold the number of bytes sent/received */
                         /* for verification purposes */
 
-    int numConnections = 0;
+    numConnections = 0;
 
     char recBuf[3];
 
@@ -119,6 +134,9 @@ int main(int argc, char *argv[])
         close(serverSock);
         exit(1);
     }
+
+
+    // int *x = mmap(0, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 
     /* Loop server forever*/
     while(1)
@@ -193,15 +211,19 @@ int main(int argc, char *argv[])
                             puts("A dictionary with that name does not exist.");
                             puts("Defaulting to the dictionary provided in this project build.");
                             memset(&userWord, 0, sizeof(userWord));
-                            strcpy(userWord, "hangman");
+                            strcpy(userWord, "default.txt");
                         } else {
                             // puts(dictionaryLookupReturn);
                             memset(&userWord, 0, sizeof(userWord));
                             strcpy(userWord, dictionaryLookupReturn);
                         }
                     } else {
+                        char dictionaryLookupReturn[32];
+                        strcpy(dictionaryLookupReturn, "default.txt");
+                        // puts(dictionaryLookupReturn);
+                        lookupDictionary(dictionaryLookupReturn);
                         memset(&userWord, 0, sizeof(userWord));
-                        strcpy(userWord, "hangman");
+                        strcpy(userWord, dictionaryLookupReturn);
                     }
 
                     // puts("accepting connection now...");
@@ -361,9 +383,14 @@ int main(int argc, char *argv[])
                 } else {
                     puts("User has indicated they do not wish to begin a game...");
                     puts("Closing client connection...");
+                    
                     close(clientSock);
+                    numConnections--;
                     exit(1);
                 }
+            } else {
+                close(clientSock);
+                numConnections--;
             }
         } else {
             char overload[18];
