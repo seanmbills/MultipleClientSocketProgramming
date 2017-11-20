@@ -140,6 +140,11 @@ int main(int argc, char *argv[])
         if (numConnections <= 3) {
             int pid = fork();
             if (pid == 0) {
+
+                printf("%i\n", getpid());
+
+                srand(time(NULL) ^ (getpid() << 16));
+
                 char userWord[64];
 
                 if (argc == 3) {
@@ -209,6 +214,8 @@ int main(int argc, char *argv[])
                     numBytes = send(clientSock, message, SNDBUFSIZE, 0);
                     if (numBytes < 0) {
                         puts("Sending the word failed...");
+                        numConnections--;
+                        printf("Num connections: %d\n", numConnections);
                         close(clientSock);
                         exit(1);
                     }
@@ -219,10 +226,14 @@ int main(int argc, char *argv[])
                     // puts(recBuf);
                     if (numBytes < 0) {
                         puts("Receiving of the word transmission failed...");
+                        numConnections--;
+                        printf("Num connections: %d\n", numConnections);
                         close(clientSock);
                         exit(1);
                     } else if (numBytes == 0) {
                         puts("Receiving connection closed prematurely...");
+                        numConnections--;
+                        printf("Num connections: %d\n", numConnections);
                         close(clientSock);
                         exit(1);
                     }
@@ -266,6 +277,7 @@ int main(int argc, char *argv[])
                     
                 }
                 if (numCorrectLetters == wordLength) {
+                    puts("You win");
                     char message[10];
                     sprintf(&message[0], "8");
                     snprintf(&message[1], sizeof("You Win!"), "%s", "You Win!");
@@ -275,6 +287,8 @@ int main(int argc, char *argv[])
                         close(clientSock);
                         exit(1);
                     }
+                    numConnections--;
+                    printf("Num connections: %d\n", numConnections);
                     // break;
                 } else if (numIncorrectGuesses == 6) {
                     char message[11];
@@ -286,20 +300,30 @@ int main(int argc, char *argv[])
                         close(clientSock);
                         exit(1);
                     }
+                    numConnections--;
+                    printf("Num connections: %d\n", numConnections);
                     // break;
                 }
             }
         } else {
             puts("too many connections...");
             char message[18];
-            sprintf(&message[0], "17");
+            int test_out = (int)'A' - 48;
+            printf("Test: %d\n", test_out);
+            int x = 17;
+            char y = x;
+            printf("%c", y);
+            // strcpy(message[0], &y);
             snprintf(&message[1], sizeof("server-overload"), "%s", "server-overload");
+            puts(message);
             numBytes = send(clientSock, message, sizeof(message), 0);
             if (numBytes < 0) {
                 puts("Sending the message 'server-overload' failed...");
                 close(clientSock);
                 exit(1);
             }
+            numConnections--;
+            printf("Num connections: %d\n", numConnections);
         }
     }
 }

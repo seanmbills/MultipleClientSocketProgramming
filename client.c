@@ -76,7 +76,7 @@ void handleWordCase(char* response) {
 int main(int argc, char *argv[])
 {
 
-    int clientSock;         /* socket descriptor */
+    int clientSock;                 /* socket descriptor */
     struct sockaddr_in serv_addr;   /* server address structure */
 
     char *servIP;                   /* Server IP address  */
@@ -85,10 +85,8 @@ int main(int argc, char *argv[])
 
     char sndBuf[SNDBUFSIZE];        /* Send Buffer */
     char rcvBuf[RCVBUFSIZE];        /* Receive Buffer */
-    
-    int balance;            /* Account balance */
 
-    /* Get the Account Name from the command line */
+
     if (argc != 3) {
         printf("Incorrect number of arguments. The correct format is: serverIP serverPort");
         exit(1);
@@ -157,13 +155,16 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
+        puts(rcvBuf);
 
         // the response format for the server defines that the first
         // cell of the array of bytes should be the length of the response
         // thus we can pull the number of letters in the word from this response
         char messageFlag = rcvBuf[0];
-        int msgFlag = atoi(&messageFlag);
+        // printf("%c\n", messageFlag);
+        int msgFlag = (int)(messageFlag - 48);
         
+        // printf("%d\n", msgFlag);
 
         for (int i = 0; i < WORDLEN; i++) {
             serverResponse[i] = rcvBuf[i];
