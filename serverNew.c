@@ -1,13 +1,3 @@
-/*///////////////////////////////////////////////////////////
-*
-* FILE:     server.c
-* AUTHOR:   Sean M Bills
-* PROJECT:  CS 3251 Project 1 - Professor Ellen Zegura 
-* DESCRIPTION:  Network Server Code
-* CREDIT:   Adapted from Professor Traynor
-*
-*////////////////////////////////////////////////////////////
-
 /*Included libraries*/
 
 #include <stdio.h>    /* for printf() and fprintf() */
@@ -34,7 +24,6 @@ struct arguments {
 void lookupDictionary(char* dictionaryName) {
     FILE *fp;
     char *filename = dictionaryName;
-    // puts(filename);
     fp = fopen(filename, "r");
 
     if (fp == NULL){
@@ -46,7 +35,6 @@ void lookupDictionary(char* dictionaryName) {
             char buff[512];
             int numLines = 15;
             int r = rand() % 15;
-            printf("Random: %d\n", r);
             for (int i = 0; i < r; i++) {
                 fgets(buff, sizeof(buff), fp);
             }
@@ -58,20 +46,14 @@ void lookupDictionary(char* dictionaryName) {
             char line[32];
             int numLetters = 0;
             int numLines = 0;
-            //fgets(line, 32, fp);
             fscanf(fp, "%d %d", &numLetters, &numLines);
-            // printf("Num Letters: %d\n", numLetters);
-            // printf("Num Lines: %d", numLines);
             fgets(line, 32, fp);
             int r = rand() % numLines;
-            printf("Random: %d\n", r);
 
-            // printf("Random: %d\n", r);
             for (int i = 0; i < r; i++) {
                 fgets(line, 32, fp);
             }
             fgets(line, 32, fp);
-            // printf("%s", line);
             strtok(line, "\n");
             strcpy(dictionaryName, line);
         }
@@ -100,35 +82,35 @@ void* connection_handler(void *args) {
     for (int i = 0; i < startLength; i++) {
         startMessage[i + 1] = (uint8_t) start[i];
     }
+    printf("Sending the welcome 'Ready to start?' message to Client %d...\n", clientSock);
     numBytes = send(clientSock, startMessage, sizeof(startMessage), 0);
     if (numBytes < 0) {
         puts("Sending the word failed...");
         numConnections--;
-        printf("Num connections: %d\n", numConnections);
+        printf("Number of open connections: %d\n", numConnections);
         close(clientSock);
         pthread_exit(NULL);
     }
 
     memset(&recBuf, 0, RCVBUFSIZE);
     numBytes = recv(clientSock, recBuf, 2, 0);
-    // printf("%zd", numBytes);
-    // puts(recBuf);
     if (numBytes < 0) {
         puts("Receiving of the word transmission failed...");
         numConnections--;
-        printf("Num connections: %d\n", numConnections);
+        printf("Number of open connections: %d\n", numConnections);
         close(clientSock);
         pthread_exit(NULL);
     } else if (numBytes == 0) {
         puts("Receiving connection closed prematurely...");
         numConnections--;
-        printf("Num connections: %d\n", numConnections);
+        printf("Number of open connections: %d\n", numConnections);
         close(clientSock);
         pthread_exit(NULL);
     }
+    printf("Received a response from Client %d...\n", clientSock);
     char response = (char)recBuf[1];
-    // printf("%c", response);
     if (response == 'y') {
+        puts("Client has indicated they want to play a game...");
         if (argc == 3) {
             char dictionaryLookupReturn[32];
             strcpy(dictionaryLookupReturn, dict);
@@ -136,26 +118,27 @@ void* connection_handler(void *args) {
             if (strcmp(dictionaryLookupReturn, "Does not exist.") == 0) {
                 puts("A dictionary with that name does not exist.");
                 puts("Defaulting to the dictionary provided in this project build.");
+                lookupDictionary(dictionaryLookupReturn);
                 memset(&userWord, 0, sizeof(userWord));
-                strcpy(userWord, "default.txt");
+                strcpy(userWord, dictionaryLookupReturn);
             } else {
-                // puts(dictionaryLookupReturn);
+                puts("Found the dictionary...");
+                puts("Choosing a word...");
                 memset(&userWord, 0, sizeof(userWord));
                 strcpy(userWord, dictionaryLookupReturn);
             }
         } else {
+            puts("No dictionary name was given...");
+            puts("Defaulting to the default dictionary...");
+            puts("Finding a word...");
             char dictionaryLookupReturn[32];
             strcpy(dictionaryLookupReturn, "default.txt");
-            // puts(dictionaryLookupReturn);
             lookupDictionary(dictionaryLookupReturn);
             memset(&userWord, 0, sizeof(userWord));
             strcpy(userWord, dictionaryLookupReturn);
         }
 
-        // puts("accepting connection now...");
-
-        // create variables to track number of incorrect guesses, keep track of the
-        // hidden and found letters
+        
         int numIncorrectGuesses = 0;
         int wordLength = 0;
         char incorrectGuesses[6];
@@ -166,74 +149,62 @@ void* connection_handler(void *args) {
         int totalGuesses = 0;
 
         
-        // puts(userWord);
         for (int i = 0; i < (unsigned int)sizeof(userWord); i++) {
-            // printf("%c", userWord[i]);
             if (userWord[i] != 0) {
                 wordLength++;
             }
         }
-        // printf("Word Length: %d\n", wordLength);
 
         char hiddenWord[wordLength];
         for (int i = 0; i < wordLength; i++) {
             strcpy(&hiddenWord[i], "_");
         }
-        // puts(hiddenWord);
 
         while (numIncorrectGuesses < 6 && numCorrectLetters != wordLength) {
             uint8_t message[3 + wordLength + numIncorrectGuesses + 1];
             message[0] = (uint8_t) 0;
             message[1] = (uint8_t) wordLength;
             message[2] = (uint8_t) numIncorrectGuesses;
-
-            // sprintf(&message[0], "0");
-            // snprintf(&message[1], sizeof(wordLength), "%i", wordLength);
-            // snprintf(&message[2], sizeof(numIncorrectGuesses), "%i", numIncorrectGuesses);
-            
+          
             for (int i = 3; i < (wordLength + 3); i++) {
-                // strcpy(&message[i + 3], &hiddenWord[i]);
                 message[i] = (uint8_t) hiddenWord[i - 3];
             }
 
             for (int i = 0; i < numIncorrectGuesses; i++) {
-                // strcpy(&message[3 + wordLength + i], &incorrectGuesses[i]);
                 message[i + 3 + wordLength] = (uint8_t) incorrectGuesses[i];
             }
             
-            puts(incorrectGuesses);
-
+            printf("Sending the message to Client %d...\n", clientSock);
             numBytes = send(clientSock, message, sizeof(message), 0);
             if (numBytes < 0) {
                 puts("Sending the word failed...");
                 numConnections--;
-                printf("Num connections: %d\n", numConnections);
+                printf("Number of open connections: %d\n", numConnections);
                 close(clientSock);
                 pthread_exit(NULL);
             }
 
+
+            // printf("Preparing to receive a response from Client %d...\n", clientSock);
             memset(&recBuf, 0, RCVBUFSIZE);
             numBytes = recv(clientSock, recBuf, 3, 0);
-            // printf("%zd", numBytes);
-            // puts(recBuf);
             if (numBytes < 0) {
                 puts("Receiving of the word transmission failed...");
                 numConnections--;
-                printf("Num connections: %d\n", numConnections);
+                printf("Number of open connections: %d\n", numConnections);
                 close(clientSock);
                 pthread_exit(NULL);
             } else if (numBytes == 0) {
                 puts("Receiving connection closed prematurely...");
                 numConnections--;
-                printf("Num connections: %d\n", numConnections);
+                printf("Number of open connections: %d\n", numConnections);
                 close(clientSock);
                 pthread_exit(NULL);
             }
+            // printf("Message received from Client %d...\n", clientSock);
 
             int msgFlag = (int)recBuf[0];
             char userGuess = (char) recBuf[1];
-            // printf("%c", userGuess);
-            // printf("%d", msgFlag);
             
             int notGuessedYet = 1;
             for (int i = 0; i < sizeof(guessesSoFar); i++) {
@@ -263,7 +234,6 @@ void* connection_handler(void *args) {
                     }
                     if (notGuessedThisIncorrectYet == 1) {
                         incorrectGuesses[numIncorrectGuesses] = userGuess;
-                        // printf("%c\n", incorrectGuesses[numIncorrectGuesses]);
                         numIncorrectGuesses++;
                     }
                 }
@@ -272,6 +242,7 @@ void* connection_handler(void *args) {
             
         }
         if (numCorrectLetters == wordLength) {
+            printf("Client %d has won their game!\n", clientSock);
             char win[9];
             strcpy(win, "You Win!");
             uint8_t message[1 + sizeof(win)];
@@ -285,10 +256,11 @@ void* connection_handler(void *args) {
                 close(clientSock);
                 pthread_exit(NULL);
             }
+            printf("Closing connection with Client %d...\n", clientSock);
             numConnections--;
-            printf("Num connections: %d\n", numConnections);
-            // break;
+            printf("Number of open connections: %d\n", numConnections);
         } else if (numIncorrectGuesses == 6) {
+            printf("Client %d has lost their game...\n", clientSock);
             char lose[10];
             strcpy(lose, "Game Over");
             uint8_t message[1 + sizeof(lose)];
@@ -302,18 +274,20 @@ void* connection_handler(void *args) {
                 close(clientSock);
                 pthread_exit(NULL);
             }
+            printf("Closing connection with Client %d...\n", clientSock);
             numConnections--;
-            printf("Num connections: %d\n", numConnections);
-            // break;
+            printf("Number of open connections: %d\n", numConnections);
         }
     } else {
         puts("User has indicated they do not wish to begin a game...");
-        puts("Closing client connection...");
+        printf("Closing connection with Client %d...\n", clientSock);
         numConnections--;
+        printf("Number of open connections: %d\n", numConnections);
         close(clientSock);
         pthread_exit(NULL);
     }
 
+    puts("Closing the thread in which this Hangman game is running...");
     pthread_exit(NULL);
 }
 
@@ -351,7 +325,7 @@ int main(int argc, char *argv[])
 
     /* Create new TCP Socket for incoming requests*/
     /*      FILL IN */
-
+    puts("Creating new TCP socket...");
     serverSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (serverSock < 0) {
         printf("Failed to create the socket...\n");
@@ -369,7 +343,7 @@ int main(int argc, char *argv[])
 
     /* Bind to local address structure */
     /*      FILL IN */
-
+    puts("Binding the socket to the local address structure...");
     if (bind(serverSock, (struct sockaddr *) &changeServAddr, sizeof(changeServAddr)) < 0) {
         printf("Binding of the local address structure failed...\n");
         close(serverSock);
@@ -378,15 +352,12 @@ int main(int argc, char *argv[])
 
     /* Listen for incoming connections */
     /*      FILL IN */
-
+    puts("Listening on the socket...");
     if (listen(serverSock, 3) < 0) {
         printf("Listening to the socket failed...\n");
         close(serverSock);
         exit(1);
     }
-
-
-    // int *x = mmap(0, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 
     ssize_t numBytes;
 
@@ -404,15 +375,16 @@ int main(int argc, char *argv[])
             close(serverSock);
             exit(1);
         }
+        puts("Accepting a new connection...");
         numConnections++;
         if (numConnections <= 3) {
             
-
             struct arguments* args;
             args->socket = clientSock;
             args->numArgs = argc;
             args->dictionary = argv[2];
 
+            puts("Creating a new thread for this new connection to run in...");
             pthread_create(&threads[numConnections - 1], NULL, connection_handler, args);
 
             
@@ -421,6 +393,7 @@ int main(int argc, char *argv[])
 
         } else {
             puts("server-overload");
+            puts("The server is currently full and has alerted the new attempted connection of this fact...");
             char overload[18];
             strcpy(overload, "server-overload");
             uint8_t message[1 + sizeof(overload)];
@@ -428,15 +401,15 @@ int main(int argc, char *argv[])
             for (int i = 0; i < sizeof(overload); i++) {
                 message[i + 1] = (uint8_t) overload[i];
             }
-            // puts(message);
             numBytes = send(clientSock, message, sizeof(message), 0);
             if (numBytes < 0) {
                 puts("Sending the message 'server-overload' failed...");
                 close(clientSock);
                 exit(1);
             }
+            printf("Closing connection with Client %d...\n", clientSock);
             numConnections--;
-            printf("Num connections: %d\n", numConnections);
+            printf("Number of open connections: %d\n", numConnections);
             close(clientSock);
         }
     }

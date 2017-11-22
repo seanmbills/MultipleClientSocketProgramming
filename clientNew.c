@@ -1,13 +1,3 @@
-/*///////////////////////////////////////////////////////////
-*
-* FILE:     client.c
-* AUTHOR:   Sean M Bills 
-* PROJECT:  CS 3251 Project 1 - Professor Ellen Zegura 
-* DESCRIPTION:  Network Client Code
-* CREDIT:   Adapted from Professor Traynor
-*
-*////////////////////////////////////////////////////////////
-
 /* Included libraries */
 
 #include <stdio.h>          /* for printf() and fprintf() */
@@ -27,22 +17,22 @@ void determineServerMessage(int flag, char* response) {
     char message[flag + 1];
     for (int i = 0; i < flag; i++) {
         strcpy(&message[i], &response[i]);
-        // printf("%c", message[i]);
     }
-    // puts(message);
     if (strcmp(message, "server-overload") == 0) {
         puts(message);
         puts("The server is currently full. Please try again later.");
     } else if (strcmp(message, "You Win!") == 0) {
         puts("Congratulations! You Win!");
+        puts("Game Over!");
     } else if (strcmp(message, "Game Over") == 0) {
-        puts("Game Over! Better luck next time.");
+        puts("You lose :( Better luck next time!");
+        puts("Game Over!");
     }
 }
 
 void handleWordCase(int flag, int length, int incorrect, char* word, char* guesses) {
     printf("The word is: ");
-    for (int i = 0; i < sizeof(word); i++) {
+    for (int i = 0; i < length; i++) {
         printf("%c ", word[i]);
     }
     puts("");
@@ -128,12 +118,9 @@ int main(int argc, char *argv[])
     /* Send the string to the server */
     /*      FILL IN  */
 
-    // create variables to hold server responses
     
     memset(&rcvBuf, 0, sizeof(rcvBuf));
     numBytes = recv(clientSock, rcvBuf, RCVBUFSIZE, 0);
-    // puts(rcvBuf);
-    // printf("%zd", numBytes);
     if (numBytes < 0) {
         puts("Receiving of the word transmission failed...");
         close(clientSock);
@@ -176,14 +163,13 @@ int main(int argc, char *argv[])
         output += 32;
     }
 
-    // printf("%c", output);
 
     if (output == 'y') {
         uint8_t questionResponse[2];
         questionResponse[0] = (uint8_t) 1;
         questionResponse[1] = (uint8_t) output;
+
         numBytes = send(clientSock, questionResponse, sizeof(questionResponse), 0);
-        // printf("%zd", numBytes);
         if (numBytes < 0) {
             puts("Sending the account name failed...");
             close(clientSock);
@@ -197,22 +183,14 @@ int main(int argc, char *argv[])
     }
 
 
-    // char userGuess[2];
     char userGuess;
     char input[32];
 
     
     while (1) {
-        // clear out the receive buffer to receive the initial indication from the server
-        // as to how big the word is
         memset(&rcvBuf, 0, RCVBUFSIZE);
-        // receive the initial response from the server in regards to the word the
-        // client is intended to guess
-
 
         numBytes = recv(clientSock, rcvBuf, RCVBUFSIZE, 0);
-        // puts(rcvBuf);
-        // printf("%zd", numBytes);
         if (numBytes < 0) {
             puts("Receiving of the word transmission failed...");
             close(clientSock);
@@ -223,20 +201,13 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        // puts(rcvBuf);
-
-        // the response format for the server defines that the first
-        // cell of the array of bytes should be the length of the response
-        // thus we can pull the number of letters in the word from this response
+        
         int msgFlag = (int)rcvBuf[0];
-        // printf("%d\n", msgFlag);
-        // puts(serverResponse);
 
         if (msgFlag != 0) {
             char message[msgFlag + 1];
             for (int i = 0; i < msgFlag; i++) {
                 message[i] = (char)rcvBuf[i + 1];
-                // printf("%c", message[i]);
             }
             message[msgFlag] = '\0';
             
@@ -245,32 +216,22 @@ int main(int argc, char *argv[])
             break;
         } else {
             int length = (int)rcvBuf[1];
-            // printf("%d\n", length);
             int incorrect = (int)rcvBuf[2];
-            // printf("%d\n", incorrect);
             char word[length];
             char guesses[6];
             for (int i = 0; i < length; i++) {
                 word[i] = (char)rcvBuf[i + 3];
-                // printf("%c\n", word[i]);
             }
-            // puts("");
-            // puts(word);
             if (incorrect != 0) {
                 for (int i = 0; i < incorrect; i++) {
                     guesses[i] = (char)rcvBuf[i + 3 + length];
-                    // printf("%c\n", guesses[i]);
                 }
-                puts("");
-                // puts(guesses);
+                // puts("");
             }
 
             fflush(stdin);
             handleWordCase(msgFlag, length, incorrect, word, guesses);
-            printf("Please guess a letter: \n");
-            // userGuess = getchar();
-            // // printf("%c\n", userGuess);
-            // char c = getchar();
+            printf("Please guess a letter: ");
             fgets(input, sizeof(input), stdin);
             int validInput = 0;
 
@@ -303,7 +264,6 @@ int main(int argc, char *argv[])
             if (userGuess > 64 && userGuess < 91) {
                 userGuess += 32;
             }
-            // printf("%c", userGuess);
             
 
             guessedLetters[numLettersGuessed] = userGuess;
@@ -312,9 +272,8 @@ int main(int argc, char *argv[])
             uint8_t userMessage[2];
             userMessage[0] = (uint8_t) 1;
             userMessage[1] = (uint8_t) userGuess;
-            // printf("%d", (unsigned int)sizeof(userMessage));
+
             numBytes = send(clientSock, userMessage, sizeof(userMessage), 0);
-            // printf("%zd", numBytes);
             if (numBytes < 0) {
                 puts("Sending the account name failed...");
                 close(clientSock);
